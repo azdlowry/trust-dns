@@ -35,7 +35,7 @@ const MAX_PAYLOAD_LEN: u16 = 1500 - 40 - 8; // 1500 (general MTU) - 40 (ipv6 hea
 /// This Client is generic and capable of wrapping UDP, TCP, and other underlying DNS protocol
 ///  implementations.
 #[must_use = "futures do nothing unless polled"]
-pub struct ClientFuture<S: Stream<Item = SerialMessage, Error = io::Error>> {
+pub struct ClientFuture<S: Stream<Item = SerialMessage, Error = ProtoError>> {
     phantom: PhantomData<S>,
 }
 
@@ -49,7 +49,7 @@ impl<S: DnsClientStream + 'static> ClientFuture<S> {
     /// * `stream_handle` - The handle for the `stream` on which bytes can be sent/received.
     /// * `signer` - An optional signer for requests, needed for Updates with Sig0, otherwise not needed
     pub fn new(
-        stream: Box<Future<Item = S, Error = io::Error> + Send>,
+        stream: Box<Future<Item = S, Error = ProtoError> + Send>,
         stream_handle: Box<DnsStreamHandle>,
         signer: Option<Arc<Signer>>,
     ) -> Box<Future<Item = BasicClientHandle, Error = ClientError> + Send> {
@@ -67,7 +67,7 @@ impl<S: DnsClientStream + 'static> ClientFuture<S> {
     /// * `stream_handle` - The handle for the `stream` on which bytes can be sent/received.
     /// * `finalizer` - An optional signer for requests, needed for Updates with Sig0, otherwise not needed
     pub fn with_timeout(
-        stream: Box<Future<Item = S, Error = io::Error> + Send>,
+        stream: Box<Future<Item = S, Error = ProtoError> + Send>,
         stream_handle: Box<DnsStreamHandle>,
         timeout_duration: Duration,
         finalizer: Option<Arc<Signer>>,

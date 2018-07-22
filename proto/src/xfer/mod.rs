@@ -5,7 +5,6 @@
 //! TODO: this module needs some serious refactoring and normalization.
 
 use std::fmt::{Debug, Display};
-use std::io;
 use std::net::SocketAddr;
 
 use error::*;
@@ -26,7 +25,7 @@ mod serial_message;
 
 pub use self::dns_exchange::{DnsExchange, DnsExchangeConnect};
 pub use self::dns_handle::{BasicDnsHandle, DnsHandle, DnsStreamHandle, StreamHandle};
-pub use self::dns_multiplexer::{DnsMultiplexer, DnsMultiplexerSerialResponse};
+pub use self::dns_multiplexer::{DnsMultiplexer, DnsMultiplexerConnect, DnsMultiplexerSerialResponse};
 pub use self::dns_request::{DnsRequest, DnsRequestOptions};
 pub use self::dns_response::DnsResponse;
 pub use self::retry_dns_handle::RetryDnsHandle;
@@ -43,7 +42,7 @@ fn ignore_send<M, E: Debug>(result: Result<M, E>) {
 
 /// A non-multiplexed stream of Serialized DNS messages
 pub trait DnsClientStream:
-    Stream<Item = SerialMessage, Error = io::Error> + Display + Send
+    Stream<Item = SerialMessage, Error = ProtoError> + Display + Send
 {
     /// The remote name server address
     fn name_server_addr(&self) -> SocketAddr;

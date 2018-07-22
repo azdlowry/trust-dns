@@ -17,14 +17,18 @@
 use std::io;
 use std::net::SocketAddr;
 use std::time::Duration;
+use std::sync::Arc;
 
 use futures::Future;
 use tokio_tcp::TcpStream;
 use trust_dns_proto::DnsStreamHandle;
+use trust_dns_proto::tcp::TcpClientStream;
+use trust_dns_proto::error::ProtoError;
+use trust_dns_proto::xfer::{DnsRequestSender, DnsExchange, DnsExchangeConnect, DnsMultiplexer, DnsRequestStreamHandle, DnsMultiplexerConnect};
 
+use rr::dnssec::Signer;
 use client::ClientConnection;
 use error::*;
-use tcp::TcpClientStream;
 
 /// Tcp client connection
 ///
@@ -67,17 +71,20 @@ impl TcpClientConnection {
 }
 
 impl ClientConnection for TcpClientConnection {
-    type MessageStream = TcpClientStream<TcpStream>;
+    type Sender = DnsMultiplexer<TcpClientStream<TcpStream>, Signer>;
+    type Response = <Self::Sender as DnsRequestSender>::DnsResponseFuture;
+    type SenderFuture = DnsMultiplexerConnect<TcpClientStream<TcpStream>, Signer>;
 
     fn new_stream(
         &self,
-    ) -> ClientResult<(
-        Box<Future<Item = Self::MessageStream, Error = io::Error> + Send>,
-        Box<DnsStreamHandle>,
-    )> {
+    ) -> (
+        DnsExchangeConnect<Self::SenderFuture, Self::Sender, Self::Response>,
+        DnsRequestStreamHandle<Self::Response>,
+    ) {
         let (tcp_client_stream, handle) =
             TcpClientStream::<TcpStream>::with_timeout(self.name_server, self.timeout);
-
-        Ok((tcp_client_stream, handle))
+        // FIXME: what is the Signer here?
+        let mp = DnsMultiplexer::new(Box::new(tcp_client_stream), handle, None::<Arc<Signer>>);
+        DnsExchange::connect(mp)
     }
 }

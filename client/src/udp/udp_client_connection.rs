@@ -16,13 +16,17 @@
 
 use std::io;
 use std::net::SocketAddr;
+use std::sync::Arc;
 
 use futures::Future;
 use trust_dns_proto::DnsStreamHandle;
+use trust_dns_proto::error::ProtoError;
+use trust_dns_proto::udp::UdpClientStream;
+use trust_dns_proto::xfer::{DnsRequestSender, DnsExchange, DnsExchangeConnect, DnsMultiplexer, DnsRequestStreamHandle, DnsMultiplexerConnect};
 
+use rr::dnssec::Signer;
 use client::ClientConnection;
 use error::*;
-use udp::UdpClientStream;
 
 /// UDP based DNS Client connection
 ///
@@ -47,16 +51,19 @@ impl UdpClientConnection {
 }
 
 impl ClientConnection for UdpClientConnection {
-    type MessageStream = UdpClientStream;
+    type Sender = DnsMultiplexer<UdpClientStream, Signer>;
+    type Response = <Self::Sender as DnsRequestSender>::DnsResponseFuture;
+    type SenderFuture = DnsMultiplexerConnect<UdpClientStream, Signer>;
 
     fn new_stream(
         &self,
-    ) -> ClientResult<(
-        Box<Future<Item = Self::MessageStream, Error = io::Error> + Send>,
-        Box<DnsStreamHandle>,
-    )> {
+    ) -> (
+        DnsExchangeConnect<Self::SenderFuture, Self::Sender, Self::Response>,
+        DnsRequestStreamHandle<Self::Response>,
+    ) {
         let (udp_client_stream, handle) = UdpClientStream::new(self.name_server);
-
-        Ok((udp_client_stream, handle))
+        // FIXME: what is the Signer here?
+        let mp = DnsMultiplexer::new(Box::new(udp_client_stream), handle, None::<Arc<Signer>>);
+        DnsExchange::connect(mp)
     }
 }

@@ -11,6 +11,7 @@ use std::net::SocketAddr;
 
 use futures::{Async, Future, Poll, Stream};
 
+use error::ProtoError;
 use udp::UdpStream;
 use xfer::{DnsClientStream, SerialMessage};
 use BufDnsStreamHandle;
@@ -65,10 +66,10 @@ impl DnsClientStream for UdpClientStream {
 
 impl Stream for UdpClientStream {
     type Item = SerialMessage;
-    type Error = io::Error;
+    type Error = ProtoError;
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-        match try_ready!(self.udp_stream.poll()) {
+        match try_ready!(self.udp_stream.poll().map_err(ProtoError::from)) {
             Some(message) => {
                 if message.addr() != self.name_server {
                     debug!(

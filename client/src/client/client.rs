@@ -409,7 +409,7 @@ where
     fn new_future(
         &self,
     ) -> ClientResult<Box<Future<Item = BasicClientHandle, Error = ClientError> + Send>> {
-        let (stream, stream_handle) = self.conn.new_stream()?;
+        let (stream, stream_handle) = self.conn.new_stream();
 
         let client = ClientFuture::new(stream, stream_handle, self.signer.clone());
         Ok(client)
@@ -490,7 +490,7 @@ where
     > {
         use futures::future;
 
-        let (stream, stream_handle) = self.conn.new_stream()?;
+        let (stream, stream_handle) = self.conn.new_stream();
 
         let client = ClientFuture::new(stream, stream_handle, self.signer.clone());
         Ok(Box::new(client.and_then(|client| {
